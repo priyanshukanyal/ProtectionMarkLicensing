@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Container, Row, Col, Card, Form, Button } from "react-bootstrap";
+import SideMenu from "../SideMenu"; // Adjust path if necessary
 
 const LicenseDashboard = () => {
   const [licenseCode, setLicenseCode] = useState("");
@@ -42,53 +44,82 @@ const LicenseDashboard = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <h2>License Dashboard</h2>
+    <Container fluid>
+      <Row>
+        {/* Sidebar */}
+        <Col
+          md={2}
+          style={{
+            backgroundColor: "#2c3e50",
+            minHeight: "100vh",
+            color: "white",
+          }}
+        >
+          <SideMenu />
+        </Col>
 
-      <div className="mt-4">
-        <h4>Enter License Code</h4>
-        <input
-          type="text"
-          value={licenseCode}
-          onChange={handleCodeChange}
-          placeholder="Enter License Code"
-        />
-        <button onClick={fetchLicenseDetails}>Fetch Details</button>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-      </div>
+        {/* Main Content */}
+        <Col md={10} style={{ padding: "20px", backgroundColor: "#ecf0f1" }}>
+          <h2 className="mb-4 text-center" style={{ color: "#2c3e50" }}>
+            License Dashboard
+          </h2>
 
-      <h4>License Details</h4>
-      <input
-        type="text"
-        value={form.OrganizationName}
-        placeholder="Organization Name"
-        readOnly
-      />
-      <input
-        type="text"
-        value={form.PurchaseDate}
-        placeholder="Purchase Date"
-        readOnly
-      />
-      <input
-        type="text"
-        value={form.ExpiryDate}
-        placeholder="Expiry Date"
-        readOnly
-      />
-      <input
-        type="number"
-        value={form.Quantity}
-        placeholder="Quantity"
-        readOnly
-      />
-      <input
-        type="text"
-        value={form.PartnerName}
-        placeholder="Partner Name"
-        readOnly
-      />
-    </div>
+          <Card className="p-4 shadow-sm">
+            <h4>Enter License Code</h4>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Control
+                  type="text"
+                  value={licenseCode}
+                  onChange={handleCodeChange}
+                  placeholder="Enter License Code"
+                />
+              </Form.Group>
+              <Button variant="primary" onClick={fetchLicenseDetails}>
+                Fetch Details
+              </Button>
+              {error && (
+                <p style={{ color: "red", marginTop: "10px" }}>{error}</p>
+              )}
+            </Form>
+          </Card>
+
+          <Card className="p-4 mt-4 shadow-sm">
+            <h4>License Details</h4>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Organization Name</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.OrganizationName}
+                  readOnly
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Purchase Date</Form.Label>
+                <Form.Control type="text" value={form.PurchaseDate} readOnly />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Expiry Date</Form.Label>
+                <Form.Control type="text" value={form.ExpiryDate} readOnly />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Quantity</Form.Label>
+                <Form.Control type="number" value={form.Quantity} readOnly />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Partner Name</Form.Label>
+                <Form.Control type="text" value={form.PartnerName} readOnly />
+              </Form.Group>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 

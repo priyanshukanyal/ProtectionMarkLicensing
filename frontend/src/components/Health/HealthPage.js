@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Tabs, Tab } from "react-bootstrap";
+import { Container, Row, Col, Tabs, Tab, Card } from "react-bootstrap";
+import axios from "axios";
+import SideMenu from "../SideMenu"; // Adjust path if necessary
 import HealthTabs from "./HealthTabs";
 import HealthCounts from "./HealthCounts";
 import HealthForm from "./HealthForm";
-import axios from "axios";
 
 const HealthPage = () => {
   const [healthRecords, setHealthRecords] = useState([]);
@@ -39,38 +40,70 @@ const HealthPage = () => {
   };
 
   return (
-    <div>
-      <h2>Health Management</h2>
-      <HealthCounts counts={healthCounts} />
-      <Tabs
-        activeKey={activeTab}
-        onSelect={(key) => setActiveTab(key)}
-        id="health-tabs"
-      >
-        <Tab eventKey="healthy" title="Healthy">
-          <HealthTabs
-            records={healthRecords.filter(
-              (record) => record.HealthStatus === "Healthy"
-            )}
-          />
-        </Tab>
-        <Tab eventKey="unknown" title="Unknown">
-          <HealthTabs
-            records={healthRecords.filter(
-              (record) => record.HealthStatus === "Unknown"
-            )}
-          />
-        </Tab>
-        <Tab eventKey="dead" title="Dead">
-          <HealthTabs
-            records={healthRecords.filter(
-              (record) => record.HealthStatus === "Dead"
-            )}
-          />
-        </Tab>
-      </Tabs>
-      <HealthForm onAdd={fetchHealthRecords} onUpdate={fetchHealthRecords} />
-    </div>
+    <Container fluid>
+      <Row>
+        {/* Sidebar */}
+        <Col
+          md={2}
+          style={{
+            backgroundColor: "#2c3e50",
+            minHeight: "100vh",
+            color: "white",
+          }}
+        >
+          <SideMenu />
+        </Col>
+
+        {/* Main Content */}
+        <Col md={10} style={{ padding: "20px", backgroundColor: "#ecf0f1" }}>
+          <h2 className="mb-4 text-center" style={{ color: "#2c3e50" }}>
+            Health Management
+          </h2>
+
+          <Card className="p-4 shadow-sm mb-4">
+            <HealthCounts counts={healthCounts} />
+          </Card>
+
+          <Card className="p-4 shadow-sm">
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(key) => setActiveTab(key)}
+              id="health-tabs"
+            >
+              <Tab eventKey="healthy" title="Healthy">
+                <HealthTabs
+                  records={healthRecords.filter(
+                    (record) => record.HealthStatus === "Healthy"
+                  )}
+                />
+              </Tab>
+              <Tab eventKey="unknown" title="Unknown">
+                <HealthTabs
+                  records={healthRecords.filter(
+                    (record) => record.HealthStatus === "Unknown"
+                  )}
+                />
+              </Tab>
+              <Tab eventKey="dead" title="Dead">
+                <HealthTabs
+                  records={healthRecords.filter(
+                    (record) => record.HealthStatus === "Dead"
+                  )}
+                />
+              </Tab>
+            </Tabs>
+          </Card>
+
+          <Card className="p-4 mt-4 shadow-sm">
+            <h4>Add or Update Health Record</h4>
+            <HealthForm
+              onAdd={fetchHealthRecords}
+              onUpdate={fetchHealthRecords}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 

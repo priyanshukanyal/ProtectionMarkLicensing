@@ -12,6 +12,7 @@ import { AuthProvider } from "./components/Authentication/AuthContext";
 import LicenseDashboard from "./components/Licence/Licence";
 import LicenseCodeGenerator from "./components/Licence/LicenseCodeGenerator";
 import Policy from "./components/Policies/Policy";
+import Device from "./components/Device/device";
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
         <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/add-device" element={<Device />} />
           <Route path="/policy" element={<Policy />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/licence" element={<LicenseDashboard />} />

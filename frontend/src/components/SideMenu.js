@@ -11,6 +11,11 @@ const SideMenu = () => {
         </Nav.Link>
       </Nav.Item>
       <Nav.Item>
+        <Nav.Link as={Link} to="/add-device">
+          Device
+        </Nav.Link>
+      </Nav.Item>
+      <Nav.Item>
         <Nav.Link as={Link} to="/health">
           Health
         </Nav.Link>

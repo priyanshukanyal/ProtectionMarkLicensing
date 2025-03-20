@@ -5,6 +5,8 @@ import {
   createLicense,
   updateLicense,
   deleteLicense,
+  allocateLicense,
+  deallocateLicense,
   generateLicense,
   validateLicense,
 } from "../controllers/licenseController.js";
@@ -26,10 +28,16 @@ router.put("/:id", updateLicense);
 // ✅ Delete a license
 router.delete("/:id", deleteLicense);
 
-// ✅ Generate a machine-readable 16-digit license code
+// ✅ Allocate a license to a device
+router.post("/allocate", allocateLicense);
+
+// ✅ Deallocate a license from a device
+router.post("/deallocate", deallocateLicense);
+
+// ✅ Generate a License Code
 router.post("/generate", generateLicense);
 
-// ✅ Validate and decode license code
+// ✅ Validate a License Code
 router.post("/validate", validateLicense);
 
 export default router;

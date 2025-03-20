@@ -1,98 +1,593 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Form, Button, ListGroup } from "react-bootstrap";
 
-const DeviceTab = () => {
+const DeviceList = () => {
   const [devices, setDevices] = useState([]);
-  const [newDevice, setNewDevice] = useState({
-    name: "",
-    license: "",
-    groupId: "",
-  });
-  const [groups, setGroups] = useState([]);
+  const [licenses, setLicenses] = useState([]);
+  const [selectedLicense, setSelectedLicense] = useState("");
+  const [selectedLicenseDetails, setSelectedLicenseDetails] = useState(null);
+  const [allocatedDevices, setAllocatedDevices] = useState([]);
+  const [deallocatedDevices, setDeallocatedDevices] = useState([]);
+  const [loading, setLoading] = useState({ devices: false, licenses: false });
+  const [error, setError] = useState({ devices: null, licenses: null });
 
   useEffect(() => {
+    const fetchDevices = async () => {
+      setLoading((prev) => ({ ...prev, devices: true }));
+      setError((prev) => ({ ...prev, devices: null }));
+      try {
+        const response = await axios.get("http://localhost:5000/api/devices");
+        // Ensure the response contains an array of devices
+        if (response.data && Array.isArray(response.data.data)) {
+          setDevices(response.data.data); // Use the `data` property
+        } else {
+          console.error("Expected an array but got:", response.data);
+          setDevices([]); // Fallback to empty array
+        }
+      } catch (error) {
+        setError((prev) => ({ ...prev, devices: "Failed to fetch devices." }));
+        console.error("Error fetching devices:", error);
+      } finally {
+        setLoading((prev) => ({ ...prev, devices: false }));
+      }
+    };
     fetchDevices();
-    fetchGroups();
   }, []);
 
-  const fetchDevices = async () => {
-    const res = await axios.get("http://localhost:5000/api/devices");
-    setDevices(res.data);
+  // 🔹 Fetch all licenses
+  useEffect(() => {
+    const fetchLicenses = async () => {
+      setLoading((prev) => ({ ...prev, licenses: true }));
+      setError((prev) => ({ ...prev, licenses: null }));
+      try {
+        const response = await axios.get("http://localhost:5000/api/licenses");
+        console.log("Licenses response:", response.data); // Debugging
+
+        // Extract the `data` property from the response
+        if (response.data && Array.isArray(response.data.data)) {
+          setLicenses(response.data.data); // Use the `data` property
+        } else {
+          console.error("Expected an array but got:", response.data);
+          setLicenses([]); // Fallback to empty array
+        }
+      } catch (error) {
+        setError((prev) => ({
+          ...prev,
+          licenses: "Failed to fetch licenses.",
+        }));
+        console.error("Error fetching licenses:", error);
+      } finally {
+        setLoading((prev) => ({ ...prev, licenses: false }));
+      }
+    };
+    fetchLicenses();
+  }, []);
+
+  // 🔄 Handle license selection
+  const handleLicenseChange = (licenseId) => {
+    setSelectedLicense(licenseId);
+    if (licenseId) {
+      const license = licenses.find(
+        (lic) => lic.LicenseID === Number(licenseId)
+      );
+      setSelectedLicenseDetails(license || null);
+      fetchAllocatedDevices(licenseId);
+    } else {
+      setSelectedLicenseDetails(null);
+      setAllocatedDevices([]);
+      setDeallocatedDevices([]);
+    }
   };
 
-  const fetchGroups = async () => {
-    const res = await axios.get("http://localhost:5000/api/groups");
-    setGroups(res.data);
+  // 🔹 Fetch allocated devices for selected license
+  const fetchAllocatedDevices = async (licenseId) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/licenses/${licenseId}`
+      );
+      const allocated = response.data?.AllocatedDevices || [];
+      setAllocatedDevices(allocated);
+      setDeallocatedDevices(
+        devices.filter(
+          (d) => !allocated.some((ad) => ad.DeviceID === d.DeviceID)
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching allocated devices:", error);
+      alert("Failed to fetch allocated devices.");
+    }
   };
 
-  const addDevice = async () => {
-    if (!newDevice.name || !newDevice.license || !newDevice.groupId) return;
-    await axios.post("http://localhost:5000/api/devices", newDevice);
-    setNewDevice({ name: "", license: "", groupId: "" });
-    fetchDevices();
+  // ✅ Allocate a license to a device
+  const allocateLicense = async (device) => {
+    if (!selectedLicense) {
+      alert("Please select a license first.");
+      return;
+    }
+
+    if (allocatedDevices.some((d) => d.DeviceID === device.DeviceID)) {
+      alert("Device is already allocated!");
+      return;
+    }
+
+    if (
+      selectedLicenseDetails?.AllocatedLicenses >=
+      selectedLicenseDetails?.Quantity
+    ) {
+      alert("Allocation failed! You have exceeded the available quantity.");
+      return;
+    }
+
+    try {
+      const payload = {
+        licenseId: parseInt(selectedLicense, 10), // Parse licenseId as integer
+        deviceId: device.DeviceID,
+      };
+      console.log("Request Payload:", payload); // Log the payload
+
+      const response = await axios.post(
+        "http://localhost:5000/api/licenses/allocate",
+        payload
+      );
+      alert(response.data.message);
+      updateLicenseStats(1);
+      moveDevice(device, "allocate");
+    } catch (error) {
+      console.error(
+        "Error allocating license:",
+        error.response?.data || error.message
+      );
+      alert("Failed to allocate license. Check the console for details.");
+    }
   };
 
-  const deleteDevice = async (id) => {
-    await axios.delete(`http://localhost:5000/api/devices/${id}`);
-    fetchDevices();
+  // ✅ Deallocate a license from a device
+  const deallocateLicense = async (device) => {
+    if (!selectedLicense) {
+      alert("Please select a license first.");
+      return;
+    }
+
+    if (!allocatedDevices.some((d) => d.DeviceID === device.DeviceID)) {
+      alert("Device is not allocated!");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/licenses/deallocate",
+        {
+          licenseId: selectedLicense,
+          deviceId: device.DeviceID,
+        }
+      );
+      alert(response.data.message);
+      updateLicenseStats(-1);
+      moveDevice(device, "deallocate");
+    } catch (error) {
+      console.error("Error deallocating license:", error);
+      alert("Failed to deallocate license.");
+    }
+  };
+
+  // 🔄 Update license stats
+  const updateLicenseStats = (change) => {
+    setSelectedLicenseDetails((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        AllocatedLicenses: prev.AllocatedLicenses + change,
+        DeallocatedLicenses: prev.DeallocatedLicenses - change,
+      };
+    });
+  };
+
+  // 🔄 Move device between allocated and deallocated lists
+  const moveDevice = (device, action) => {
+    if (action === "allocate") {
+      setAllocatedDevices((prev) => [...prev, device]);
+      setDeallocatedDevices((prev) =>
+        prev.filter((d) => d.DeviceID !== device.DeviceID)
+      );
+    } else {
+      setDeallocatedDevices((prev) => [...prev, device]);
+      setAllocatedDevices((prev) =>
+        prev.filter((d) => d.DeviceID !== device.DeviceID)
+      );
+    }
   };
 
   return (
-    <div>
-      <h4>Manage Devices</h4>
-      <Form.Control
-        type="text"
-        placeholder="Device Name"
-        value={newDevice.name}
-        onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })}
-      />
-      <Form.Control
-        type="text"
-        placeholder="License"
-        value={newDevice.license}
-        onChange={(e) =>
-          setNewDevice({ ...newDevice, license: e.target.value })
-        }
-        className="mt-2"
-      />
-      <Form.Select
-        value={newDevice.groupId}
-        onChange={(e) =>
-          setNewDevice({ ...newDevice, groupId: e.target.value })
-        }
-        className="mt-2"
-      >
-        <option value="">Select Group</option>
-        {groups.map((group) => (
-          <option key={group.GroupID} value={group.GroupID}>
-            {group.GroupName}
-          </option>
-        ))}
-      </Form.Select>
-      <Button className="mt-2" onClick={addDevice}>
-        Add Device
-      </Button>
+    <div className="container">
+      <h2>Device Management</h2>
 
-      <ListGroup className="mt-3">
-        {devices.map((device) => (
-          <ListGroup.Item
-            key={device.DeviceID}
-            className="d-flex justify-content-between"
-          >
-            {device.DeviceName} ({device.License})
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => deleteDevice(device.DeviceID)}
-            >
-              Delete
-            </Button>
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
+      {/* Loading and Error States */}
+      {loading.devices && <p>Loading devices...</p>}
+      {error.devices && <p style={{ color: "red" }}>{error.devices}</p>}
+      {loading.licenses && <p>Loading licenses...</p>}
+      {error.licenses && <p style={{ color: "red" }}>{error.licenses}</p>}
+
+      {/* License Selection */}
+      <div>
+        <label>Select License:</label>
+        <select onChange={(e) => handleLicenseChange(e.target.value)}>
+          <option value="">-- Select License --</option>
+          {Array.isArray(licenses) &&
+            licenses.map((license) => (
+              <option key={license.LicenseID} value={license.LicenseID}>
+                {license.LicenseName} (Available:{" "}
+                {license.Quantity - license.AllocatedLicenses})
+              </option>
+            ))}
+        </select>
+      </div>
+
+      {/* Selected License Stats */}
+      {selectedLicenseDetails && (
+        <div className="license-stats">
+          <h3>Selected License: {selectedLicenseDetails.LicenseName}</h3>
+          <p>
+            <strong>Total Quantity:</strong> {selectedLicenseDetails.Quantity}
+          </p>
+          <p>
+            <strong>Allocated:</strong> {allocatedDevices.length}
+          </p>
+          <p>
+            <strong>Deallocated:</strong>{" "}
+            {selectedLicenseDetails.DeallocatedLicenses}
+          </p>
+        </div>
+      )}
+
+      {/* Device Columns */}
+      <div className="device-columns" style={{ display: "flex", gap: "20px" }}>
+        {/* Allocated Devices */}
+        <div className="allocated-devices" style={{ width: "50%" }}>
+          <h3>Allocated Devices</h3>
+          <table border="1">
+            <thead>
+              <tr>
+                <th>Device Name</th>
+                <th>IP Address</th>
+                <th>MAC Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allocatedDevices.map((device) => (
+                <tr key={device.DeviceID}>
+                  <td>{device.DeviceName}</td>
+                  <td>{device.IPAddress}</td>
+                  <td>{device.MACAddress}</td>
+                  <td>
+                    <button onClick={() => deallocateLicense(device)}>
+                      Deallocate
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Deallocated Devices */}
+        <div className="deallocated-devices" style={{ width: "50%" }}>
+          <h3>Deallocated Devices</h3>
+          <table border="1">
+            <thead>
+              <tr>
+                <th>Device Name</th>
+                <th>IP Address</th>
+                <th>MAC Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deallocatedDevices.map((device) => (
+                <tr key={device.DeviceID}>
+                  <td>{device.DeviceName}</td>
+                  <td>{device.IPAddress}</td>
+                  <td>{device.MACAddress}</td>
+                  <td>
+                    <button onClick={() => allocateLicense(device)}>
+                      Allocate
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default DeviceTab;
+export default DeviceList;
+// import React, { useEffect, useState } from "react";
+// import axios from "axios";
+
+// const DeviceList = () => {
+//   const [devices, setDevices] = useState([]);
+//   const [licenses, setLicenses] = useState([]);
+//   const [selectedLicense, setSelectedLicense] = useState("");
+//   const [selectedLicenseDetails, setSelectedLicenseDetails] = useState(null);
+//   const [allocatedDevices, setAllocatedDevices] = useState([]);
+//   const [deallocatedDevices, setDeallocatedDevices] = useState([]);
+//   const [loading, setLoading] = useState({ devices: false, licenses: false });
+//   const [error, setError] = useState({ devices: null, licenses: null });
+
+//   // 🔹 Fetch all devices
+//   useEffect(() => {
+//     const fetchDevices = async () => {
+//       setLoading((prev) => ({ ...prev, devices: true }));
+//       setError((prev) => ({ ...prev, devices: null }));
+//       try {
+//         const response = await axios.get("http://localhost:5000/api/devices");
+//         setDevices(response.data || []);
+//       } catch (error) {
+//         setError((prev) => ({ ...prev, devices: "Failed to fetch devices." }));
+//         console.error("Error fetching devices:", error);
+//       } finally {
+//         setLoading((prev) => ({ ...prev, devices: false }));
+//       }
+//     };
+//     fetchDevices();
+//   }, []);
+
+//   // 🔹 Fetch all licenses
+//   useEffect(() => {
+//     const fetchLicenses = async () => {
+//       setLoading((prev) => ({ ...prev, licenses: true }));
+//       setError((prev) => ({ ...prev, licenses: null }));
+//       try {
+//         const response = await axios.get("http://localhost:5000/api/licenses");
+//         setLicenses(response.data || []);
+//       } catch (error) {
+//         setError((prev) => ({
+//           ...prev,
+//           licenses: "Failed to fetch licenses.",
+//         }));
+//         console.error("Error fetching licenses:", error);
+//       } finally {
+//         setLoading((prev) => ({ ...prev, licenses: false }));
+//       }
+//     };
+//     fetchLicenses();
+//   }, []);
+
+//   // 🔄 Handle license selection
+//   const handleLicenseChange = (licenseId) => {
+//     setSelectedLicense(licenseId);
+//     if (licenseId) {
+//       const license = licenses.find(
+//         (lic) => lic.LicenseID === Number(licenseId)
+//       );
+//       setSelectedLicenseDetails(license || null);
+//       fetchAllocatedDevices(licenseId);
+//     } else {
+//       setSelectedLicenseDetails(null);
+//       setAllocatedDevices([]);
+//       setDeallocatedDevices([]);
+//     }
+//   };
+
+//   // 🔹 Fetch allocated devices for selected license
+//   const fetchAllocatedDevices = async (licenseId) => {
+//     try {
+//       const response = await axios.get(
+//         `http://localhost:5000/api/licenses/${licenseId}`
+//       );
+//       const allocated = response.data?.AllocatedDevices || [];
+//       setAllocatedDevices(allocated);
+//       setDeallocatedDevices(
+//         devices.filter(
+//           (d) => !allocated.some((ad) => ad.DeviceID === d.DeviceID)
+//         )
+//       );
+//     } catch (error) {
+//       console.error("Error fetching allocated devices:", error);
+//       alert("Failed to fetch allocated devices.");
+//     }
+//   };
+
+//   // ✅ Allocate a license to a device
+//   const allocateLicense = async (device) => {
+//     if (!selectedLicense) {
+//       alert("Please select a license first.");
+//       return;
+//     }
+
+//     if (allocatedDevices.some((d) => d.DeviceID === device.DeviceID)) {
+//       alert("Device is already allocated!");
+//       return;
+//     }
+
+//     if (
+//       selectedLicenseDetails?.AllocatedLicenses >=
+//       selectedLicenseDetails?.Quantity
+//     ) {
+//       alert("Allocation failed! You have exceeded the available quantity.");
+//       return;
+//     }
+
+//     try {
+//       const response = await axios.post(
+//         "http://localhost:5000/api/licenses/allocate",
+//         {
+//           licenseId: selectedLicense,
+//           deviceId: device.DeviceID,
+//         }
+//       );
+//       alert(response.data.message);
+//       updateLicenseStats(1);
+//       moveDevice(device, "allocate");
+//     } catch (error) {
+//       console.error("Error allocating license:", error);
+//       alert("Failed to allocate license.");
+//     }
+//   };
+
+//   // ✅ Deallocate a license from a device
+//   const deallocateLicense = async (device) => {
+//     if (!selectedLicense) {
+//       alert("Please select a license first.");
+//       return;
+//     }
+
+//     if (!allocatedDevices.some((d) => d.DeviceID === device.DeviceID)) {
+//       alert("Device is not allocated!");
+//       return;
+//     }
+
+//     try {
+//       const response = await axios.post(
+//         "http://localhost:5000/api/licenses/deallocate",
+//         {
+//           licenseId: selectedLicense,
+//           deviceId: device.DeviceID,
+//         }
+//       );
+//       alert(response.data.message);
+//       updateLicenseStats(-1);
+//       moveDevice(device, "deallocate");
+//     } catch (error) {
+//       console.error("Error deallocating license:", error);
+//       alert("Failed to deallocate license.");
+//     }
+//   };
+
+//   // 🔄 Update license stats
+//   const updateLicenseStats = (change) => {
+//     setSelectedLicenseDetails((prev) => {
+//       if (!prev) return prev;
+//       return {
+//         ...prev,
+//         AllocatedLicenses: prev.AllocatedLicenses + change,
+//         DeallocatedLicenses: prev.DeallocatedLicenses - change,
+//       };
+//     });
+//   };
+
+//   // 🔄 Move device between allocated and deallocated lists
+//   const moveDevice = (device, action) => {
+//     if (action === "allocate") {
+//       setAllocatedDevices((prev) => [...prev, device]);
+//       setDeallocatedDevices((prev) =>
+//         prev.filter((d) => d.DeviceID !== device.DeviceID)
+//       );
+//     } else {
+//       setDeallocatedDevices((prev) => [...prev, device]);
+//       setAllocatedDevices((prev) =>
+//         prev.filter((d) => d.DeviceID !== device.DeviceID)
+//       );
+//     }
+//   };
+
+//   return (
+//     <div className="container">
+//       <h2>Device Management</h2>
+
+//       {/* Loading and Error States */}
+//       {loading.devices && <p>Loading devices...</p>}
+//       {error.devices && <p style={{ color: "red" }}>{error.devices}</p>}
+//       {loading.licenses && <p>Loading licenses...</p>}
+//       {error.licenses && <p style={{ color: "red" }}>{error.licenses}</p>}
+
+//       {/* License Selection */}
+//       <div>
+//         <label>Select License:</label>
+//         <select onChange={(e) => handleLicenseChange(e.target.value)}>
+//           <option value="">-- Select License --</option>
+//           {Array.isArray(licenses) &&
+//             licenses.map((license) => (
+//               <option key={license.LicenseID} value={license.LicenseID}>
+//                 {license.LicenseName} (Available:{" "}
+//                 {license.Quantity - license.AllocatedLicenses})
+//               </option>
+//             ))}
+//         </select>
+//       </div>
+
+//       {/* Selected License Stats */}
+//       {selectedLicenseDetails && (
+//         <div className="license-stats">
+//           <h3>Selected License: {selectedLicenseDetails.LicenseName}</h3>
+//           <p>
+//             <strong>Total Quantity:</strong> {selectedLicenseDetails.Quantity}
+//           </p>
+//           <p>
+//             <strong>Allocated:</strong> {allocatedDevices.length}
+//           </p>
+//           <p>
+//             <strong>Deallocated:</strong>{" "}
+//             {selectedLicenseDetails.DeallocatedLicenses}
+//           </p>
+//         </div>
+//       )}
+
+//       {/* Device Columns */}
+//       <div className="device-columns" style={{ display: "flex", gap: "20px" }}>
+//         {/* Allocated Devices */}
+//         <div className="allocated-devices" style={{ width: "50%" }}>
+//           <h3>Allocated Devices</h3>
+//           <table border="1">
+//             <thead>
+//               <tr>
+//                 <th>Device Name</th>
+//                 <th>IP Address</th>
+//                 <th>MAC Address</th>
+//                 <th>Action</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {allocatedDevices.map((device) => (
+//                 <tr key={device.DeviceID}>
+//                   <td>{device.DeviceName}</td>
+//                   <td>{device.IPAddress}</td>
+//                   <td>{device.MACAddress}</td>
+//                   <td>
+//                     <button onClick={() => deallocateLicense(device)}>
+//                       Deallocate
+//                     </button>
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+
+//         {/* Deallocated Devices */}
+//         <div className="deallocated-devices" style={{ width: "50%" }}>
+//           <h3>Deallocated Devices</h3>
+//           <table border="1">
+//             <thead>
+//               <tr>
+//                 <th>Device Name</th>
+//                 <th>IP Address</th>
+//                 <th>MAC Address</th>
+//                 <th>Action</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {deallocatedDevices.map((device) => (
+//                 <tr key={device.DeviceID}>
+//                   <td>{device.DeviceName}</td>
+//                   <td>{device.IPAddress}</td>
+//                   <td>{device.MACAddress}</td>
+//                   <td>
+//                     <button onClick={() => allocateLicense(device)}>
+//                       Allocate
+//                     </button>
+//                   </td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default DeviceList;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Row, Col, Tabs, Tab } from "react-bootstrap";
+import { Container, Row, Col, Tabs, Tab, Card } from "react-bootstrap";
 import SideMenu from "../SideMenu"; // Adjust the import if needed
 import GroupTab from "./GroupTab.js";
 import DeviceTab from "./DeviceTab.js";
@@ -11,26 +11,43 @@ const Policy = () => {
   return (
     <Container fluid>
       <Row>
-        <Col md={2} style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+        {/* Sidebar */}
+        <Col
+          md={2}
+          style={{
+            backgroundColor: "#2c3e50",
+            minHeight: "100vh",
+            color: "white",
+          }}
+        >
           <SideMenu />
         </Col>
-        <Col md={10}>
-          <h2>Policy Management</h2>
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(key) => setActiveTab(key)}
-            id="policy-tabs"
-          >
-            <Tab eventKey="group" title="Group">
-              <GroupTab />
-            </Tab>
-            <Tab eventKey="device" title="Device">
-              <DeviceTab />
-            </Tab>
-            <Tab eventKey="policy" title="Policy">
-              <PolicyTab />
-            </Tab>
-          </Tabs>
+
+        {/* Main Content */}
+        <Col md={10} style={{ padding: "20px", backgroundColor: "#ecf0f1" }}>
+          <h2 className="mb-4 text-center" style={{ color: "#2c3e50" }}>
+            Policy Management
+          </h2>
+
+          {/* Tabs Section */}
+          <Card className="p-4 shadow-sm">
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(key) => setActiveTab(key)}
+              id="policy-tabs"
+              className="mb-3"
+            >
+              <Tab eventKey="group" title="Group">
+                <GroupTab />
+              </Tab>
+              <Tab eventKey="device" title="Device">
+                <DeviceTab />
+              </Tab>
+              <Tab eventKey="policy" title="Policy">
+                <PolicyTab />
+              </Tab>
+            </Tabs>
+          </Card>
         </Col>
       </Row>
     </Container>
