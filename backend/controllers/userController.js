@@ -1,43 +1,31 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
-
-// Generate JWT Token
-const generateToken = (user) => {
-  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRATION || "30d",
-  });
-};
+import { generateToken } from "./authController.js"; // Import token function
 
 // Register User
 export const registerUser = async (req, res) => {
   const { name, email, password, role } = req.body;
 
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
   try {
-    // Check if user already exists
-    const existingUser = await userModel.getUserByEmail(email);
+    const existingUser = await userModel.getUserByEmail(email.toLowerCase());
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Assign role - only admins can assign roles
+    const assignedRole =
+      req.user?.role === "Admin" || req.user?.role === "Super Admin"
+        ? role || "Guest"
+        : "Guest";
 
-    // Assign default role
-    let assignedRole = "Guest"; // Default role
-    if (
-      req.user &&
-      (req.user.role === "Admin" || req.user.role === "Super Admin")
-    ) {
-      assignedRole = role || "Guest"; // Admins can assign roles
-    }
-
-    // Create user
     const newUser = await userModel.registerUser(
       name,
       email,
-      hashedPassword,
+      password,
       assignedRole
     );
 
@@ -49,37 +37,7 @@ export const registerUser = async (req, res) => {
       role: newUser.role,
     });
   } catch (error) {
-    console.error("Error registering user:", error);
-    res.status(500).json({ message: "Server error, please try again later" });
-  }
-};
-
-// Login User
-export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await userModel.getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    // Send response with token
-    res.json({
-      token: generateToken(user.id, user.role),
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
-  } catch (error) {
-    console.error("Login Error:", error);
+    console.error("Error registering user:", error.message);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 };
@@ -93,6 +51,7 @@ export const getUserProfile = async (req, res) => {
     }
     res.json(user);
   } catch (error) {
+    console.error("Get Profile Error:", error.message);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 };
@@ -107,18 +66,15 @@ export const updateUserProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    let hashedPassword = user.password;
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      hashedPassword = await bcrypt.hash(password, salt);
-    }
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const updatedUser = await userModel.updateUserProfile(
       req.user.id,
-      name,
-      email,
+      name || user.name,
+      email ? email.toLowerCase() : user.email,
       hashedPassword
     );
+
     res.json({
       id: updatedUser.id,
       name: updatedUser.name,
@@ -126,6 +82,7 @@ export const updateUserProfile = async (req, res) => {
       role: updatedUser.role,
     });
   } catch (error) {
+    console.error("Update Profile Error:", error.message);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 };
@@ -141,6 +98,7 @@ export const deleteUser = async (req, res) => {
     await userModel.deleteUser(req.user.id);
     res.json({ message: "User removed successfully" });
   } catch (error) {
+    console.error("Delete User Error:", error.message);
     res.status(500).json({ message: "Server error, please try again later" });
   }
 };

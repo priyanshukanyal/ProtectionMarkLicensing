@@ -17,7 +17,7 @@ const Header = () => {
         <Navbar.Brand as={Link} to="/">
           Protection Mark
         </Navbar.Brand>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        {/* <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto">
             {token ? (
@@ -35,7 +35,7 @@ const Header = () => {
               </>
             )}
           </Nav>
-        </Navbar.Collapse>
+        </Navbar.Collapse> */}
       </Container>
     </Navbar>
   );

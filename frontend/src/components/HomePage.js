@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Container, Row, Col } from "react-bootstrap";
+import { Container, Row, Col, Card, Button } from "react-bootstrap";
 import SideMenu from "./SideMenu";
 import Policy from "./Policies/Policy.js";
 import HealthPage from "./Health/HealthPage.js";
 import LicenceReport from "./Licence/Licence.js";
 import Settings from "./Settings/Settings.js";
+import cyberSecurityImg from "../assets/cybersecurity.webp"; // Add a relevant image in assets
 
 const HomePage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -13,11 +14,17 @@ const HomePage = () => {
     switch (activeTab) {
       case "dashboard":
         return (
-          <div>
-            <h2>Dashboard</h2>
-            <p>
+          <div className="text-center">
+            <h2 className="text-primary fw-bold">Dashboard</h2>
+            <p className="text-muted">
               Monitor and manage your watermark security solutions effectively.
             </p>
+            <img
+              src={cyberSecurityImg}
+              alt="Cybersecurity"
+              className="img-fluid rounded shadow"
+              style={{ maxWidth: "80%", marginTop: "20px" }}
+            />
           </div>
         );
       case "policy":
@@ -30,11 +37,17 @@ const HomePage = () => {
         return <Settings />;
       default:
         return (
-          <div>
-            <h2>Dashboard</h2>
-            <p>
+          <div className="text-center">
+            <h2 className="text-primary fw-bold">Dashboard</h2>
+            <p className="text-muted">
               Monitor and manage your watermark security solutions effectively.
             </p>
+            <img
+              src={cyberSecurityImg}
+              alt="Cybersecurity"
+              className="img-fluid rounded shadow"
+              style={{ maxWidth: "80%", marginTop: "20px" }}
+            />
           </div>
         );
     }
@@ -43,29 +56,39 @@ const HomePage = () => {
   return (
     <Container fluid>
       <Row>
+        {/* Sidebar */}
         <Col
           md={2}
-          style={{
-            backgroundColor: "#2c3e50",
-            minHeight: "100vh",
-            color: "white",
-          }}
+          className="d-none d-md-block bg-dark text-white vh-100 p-3 shadow-sm"
         >
           <SideMenu onSelect={setActiveTab} />
         </Col>
-        <Col md={10} style={{ padding: "20px", backgroundColor: "#ecf0f1" }}>
-          <h1 style={{ color: "#34495e" }}>Welcome to Protection Mark</h1>
-          <p style={{ color: "#7f8c8d" }}>
-            Your trusted solution for watermark security on devices.
-          </p>
+
+        {/* Main Content */}
+        <Col md={10} className="p-4 bg-light">
+          {/* Hero Section */}
+          <Card className="text-white border-0 shadow-lg">
+            <Card.Img
+              src="https://ipkeys.com/wp-content/uploads/2024/04/iStock-1204106166-1024x611.jpg"
+              alt="Cybersecurity"
+              className="card-img"
+              style={{ height: "300px", objectFit: "cover", opacity: "0.8" }}
+            />
+            <Card.ImgOverlay className="d-flex flex-column justify-content-center align-items-center">
+              <h1 className="fw-bold">Protection Mark</h1>
+              <p className="fs-5">
+                Your trusted solution for watermark security on devices.
+              </p>
+              <Button variant="primary" size="lg" className="fw-bold shadow">
+                Learn More
+              </Button>
+            </Card.ImgOverlay>
+          </Card>
+
+          {/* Content Section */}
           <div
-            style={{
-              marginTop: "20px",
-              padding: "20px",
-              backgroundColor: "white",
-              borderRadius: "8px",
-              boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
-            }}
+            className="mt-4 p-4 bg-white rounded shadow-lg"
+            style={{ minHeight: "400px" }}
           >
             {renderTabContent()}
           </div>

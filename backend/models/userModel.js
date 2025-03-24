@@ -9,22 +9,27 @@ const userModel = {
     if (!pool) throw new Error("Database connection failed");
 
     try {
+      // Check if the email already exists
+      const existingUser = await this.getUserByEmail(email);
+      if (existingUser) throw new Error("Email already in use");
+
       // Hash password before storing
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = bcrypt.hashSync(password, 10);
 
       const result = await pool
         .request()
         .input("name", sql.NVarChar, name)
-        .input("email", sql.NVarChar, email)
+        .input("email", sql.NVarChar, email.toLowerCase())
         .input("password", sql.NVarChar, hashedPassword)
         .input("role", sql.NVarChar, role).query(`
           INSERT INTO Users (name, email, password, role) 
           OUTPUT INSERTED.id, INSERTED.name, INSERTED.email, INSERTED.role 
           VALUES (@name, @email, @password, @role)
         `);
-      return result.recordset[0]; // Return newly created user
+
+      return result.recordset[0];
     } catch (error) {
-      console.error("Error registering user:", error);
+      console.error("Error registering user:", error.message);
       throw new Error("Database error");
     }
   },
@@ -37,12 +42,14 @@ const userModel = {
     try {
       const result = await pool
         .request()
-        .input("email", sql.NVarChar, email)
-        .query("SELECT * FROM Users WHERE email = @email");
+        .input("email", sql.NVarChar, email.toLowerCase())
+        .query(
+          "SELECT id, name, email, password, role FROM Users WHERE email = @email"
+        );
 
-      return result.recordset[0]; // Return user if found
+      return result.recordset[0] || null;
     } catch (error) {
-      console.error("Error fetching user by email:", error);
+      console.error("Error fetching user by email:", error.message);
       throw new Error("Database error");
     }
   },
@@ -58,36 +65,45 @@ const userModel = {
         .input("userId", sql.UniqueIdentifier, userId)
         .query("SELECT id, name, email, role FROM Users WHERE id = @userId");
 
-      return result.recordset[0];
+      return result.recordset[0] || null;
     } catch (error) {
-      console.error("Error fetching user by ID:", error);
+      console.error("Error fetching user by ID:", error.message);
       throw new Error("Database error");
     }
   },
 
   // Update user profile
-  async updateUserProfile(userId, name, email, password) {
+  async updateUserProfile(userId, name, email, password = null) {
     const pool = await connectDB();
     if (!pool) throw new Error("Database connection failed");
 
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      let query = `
+        UPDATE Users 
+        SET name = @name, email = @email
+      `;
 
-      const result = await pool
+      if (password) {
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        query += `, password = @password`;
+      }
+
+      query += ` OUTPUT INSERTED.id, INSERTED.name, INSERTED.email, INSERTED.role WHERE id = @userId`;
+
+      const request = pool
         .request()
         .input("userId", sql.UniqueIdentifier, userId)
         .input("name", sql.NVarChar, name)
-        .input("email", sql.NVarChar, email)
-        .input("password", sql.NVarChar, hashedPassword).query(`
-          UPDATE Users 
-          SET name = @name, email = @email, password = @password 
-          OUTPUT INSERTED.id, INSERTED.name, INSERTED.email, INSERTED.role
-          WHERE id = @userId
-        `);
+        .input("email", sql.NVarChar, email.toLowerCase());
 
-      return result.recordset[0]; // Return updated user
+      if (password) {
+        request.input("password", sql.NVarChar, bcrypt.hashSync(password, 10));
+      }
+
+      const result = await request.query(query);
+      return result.recordset[0] || null;
     } catch (error) {
-      console.error("Error updating user profile:", error);
+      console.error("Error updating user profile:", error.message);
       throw new Error("Database error");
     }
   },
@@ -98,14 +114,16 @@ const userModel = {
     if (!pool) throw new Error("Database connection failed");
 
     try {
-      await pool
+      const result = await pool
         .request()
         .input("userId", sql.UniqueIdentifier, userId)
         .query("DELETE FROM Users WHERE id = @userId");
 
-      return { message: "User deleted successfully" };
+      return result.rowsAffected[0] > 0
+        ? { message: "User deleted successfully" }
+        : { message: "User not found" };
     } catch (error) {
-      console.error("Error deleting user:", error);
+      console.error("Error deleting user:", error.message);
       throw new Error("Database error");
     }
   },

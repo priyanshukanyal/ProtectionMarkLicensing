@@ -7,6 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 import deviceRoutes from "./routes/deviceRoutes.js";
 import licenseRoutes from "./routes/licenseRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 // Load environment variables
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(cors()); // Enable CORS for cross-origin requests
 app.use("/api/policies", policyRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/devices", deviceRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/licenses", licenseRoutes);
 // Set the port dynamically from .env or default to 5000

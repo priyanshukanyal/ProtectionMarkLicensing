@@ -1,35 +1,45 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Form, Button, ListGroup, Modal } from "react-bootstrap";
+import { Form, Button, ListGroup, Modal, Card } from "react-bootstrap";
 
 const GroupTab = () => {
   const [groups, setGroups] = useState([]);
   const [newGroup, setNewGroup] = useState("");
-  const [devices, setDevices] = useState([]); // All devices
-  const [showModal, setShowModal] = useState(false); // Controls modal visibility
-  const [selectedGroupId, setSelectedGroupId] = useState(null); // Group to which devices will be added
-  const [unassignedDevices, setUnassignedDevices] = useState([]); // Devices not assigned to any group
+  const [devices, setDevices] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [unassignedDevices, setUnassignedDevices] = useState([]);
 
   useEffect(() => {
     fetchGroups();
     fetchDevices();
   }, []);
 
-  // Fetch all groups
   const fetchGroups = async () => {
     const res = await axios.get("http://localhost:5000/api/groups");
     setGroups(res.data);
   };
 
-  // Fetch all devices
   const fetchDevices = async () => {
-    const res = await axios.get("http://localhost:5000/api/devices");
-    setDevices(res.data);
+    try {
+      const response = await axios.get("http://localhost:5000/api/devices");
+      console.log("Devices response:", response.data); // Debugging
+
+      // Check if the response contains an array
+      if (response.data && Array.isArray(response.data.data)) {
+        setDevices(response.data.data); // Use response.data.data
+      } else {
+        console.error("Expected an array but got:", response.data);
+        setDevices([]); // Ensure it's always an array
+      }
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      setDevices([]); // Fallback to empty array
+    }
   };
 
-  // Add a new group
   const addGroup = async () => {
-    if (!newGroup) return;
+    if (!newGroup.trim()) return;
     await axios.post("http://localhost:5000/api/groups", {
       GroupName: newGroup,
     });
@@ -37,49 +47,32 @@ const GroupTab = () => {
     fetchGroups();
   };
 
-  // Delete a group
   const deleteGroup = async (id) => {
     await axios.delete(`http://localhost:5000/api/groups/${id}`);
     fetchGroups();
   };
 
-  // Open modal and fetch unassigned devices
   const openAddDeviceModal = async (groupId) => {
     setSelectedGroupId(groupId);
-    const unassigned = devices.filter((device) => !device.GroupID); // Filter devices without a group
+    const unassigned = devices.filter((device) => !device.GroupID);
     setUnassignedDevices(unassigned);
     setShowModal(true);
   };
 
-  // Add a device to the selected group
   const addDeviceToGroup = async (deviceId) => {
     try {
-      // Find the device to be updated
       const deviceToUpdate = devices.find(
         (device) => device.DeviceID === deviceId
       );
+      if (!deviceToUpdate) return;
 
-      if (!deviceToUpdate) {
-        console.error("Device not found.");
-        return;
-      }
-
-      // Update the GroupID of the device
-      const updatedDevice = {
-        ...deviceToUpdate, // Include all existing fields
-        GroupID: selectedGroupId, // Update the GroupID
-      };
-
-      // Send the updated device object to the backend
+      const updatedDevice = { ...deviceToUpdate, GroupID: selectedGroupId };
       await axios.put(
         `http://localhost:5000/api/devices/${deviceId}`,
         updatedDevice
       );
 
-      // Refresh the devices list
       fetchDevices();
-
-      // Remove the added device from the unassigned devices list
       setUnassignedDevices((prev) =>
         prev.filter((device) => device.DeviceID !== deviceId)
       );
@@ -90,66 +83,86 @@ const GroupTab = () => {
 
   return (
     <div>
-      <h4>Manage Groups</h4>
-      <Form.Control
-        type="text"
-        placeholder="Enter group name"
-        value={newGroup}
-        onChange={(e) => setNewGroup(e.target.value)}
-      />
-      <Button className="mt-2" onClick={addGroup}>
-        Add Group
-      </Button>
-      <ListGroup className="mt-3">
-        {groups.map((group) => (
-          <ListGroup.Item
-            key={group.GroupID}
-            className="d-flex justify-content-between align-items-center"
-          >
-            {group.GroupName}
-            <div>
-              <Button
-                variant="success"
-                size="sm"
-                className="me-2"
-                onClick={() => openAddDeviceModal(group.GroupID)}
-              >
-                Add Device
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => deleteGroup(group.GroupID)}
-              >
-                Delete
-              </Button>
-            </div>
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
+      <Card className="shadow-lg border-0 rounded-4 p-4">
+        <h4
+          className="text-center mb-4"
+          style={{ color: "#1B263B", fontWeight: "bold" }}
+        >
+          Manage Groups
+        </h4>
 
-      {/* Modal for adding devices to a group */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        {/* Add Group Section */}
+        <div className="d-flex">
+          <Form.Control
+            type="text"
+            placeholder="Enter group name"
+            value={newGroup}
+            onChange={(e) => setNewGroup(e.target.value)}
+            className="me-2"
+          />
+          <Button variant="primary" onClick={addGroup}>
+            Add Group
+          </Button>
+        </div>
+
+        {/* Group List */}
+        <ListGroup className="mt-4">
+          {groups.map((group) => (
+            <ListGroup.Item
+              key={group.GroupID}
+              className="d-flex justify-content-between align-items-center shadow-sm"
+            >
+              <strong>{group.GroupName}</strong>
+              <div>
+                <Button
+                  variant="outline-success"
+                  size="sm"
+                  className="me-2"
+                  onClick={() => openAddDeviceModal(group.GroupID)}
+                >
+                  + Add Device
+                </Button>
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => deleteGroup(group.GroupID)}
+                >
+                  ✖ Delete
+                </Button>
+              </div>
+            </ListGroup.Item>
+          ))}
+        </ListGroup>
+      </Card>
+
+      {/* Modal for adding devices */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Add Devices to Group</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <ListGroup>
-            {unassignedDevices.map((device) => (
-              <ListGroup.Item
-                key={device.DeviceID}
-                className="d-flex justify-content-between align-items-center"
-              >
-                {device.DeviceName}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => addDeviceToGroup(device.DeviceID)}
+            {unassignedDevices.length > 0 ? (
+              unassignedDevices.map((device) => (
+                <ListGroup.Item
+                  key={device.DeviceID}
+                  className="d-flex justify-content-between align-items-center"
                 >
-                  Add
-                </Button>
-              </ListGroup.Item>
-            ))}
+                  {device.DeviceName}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => addDeviceToGroup(device.DeviceID)}
+                  >
+                    Add
+                  </Button>
+                </ListGroup.Item>
+              ))
+            ) : (
+              <p className="text-center text-muted">
+                No unassigned devices available
+              </p>
+            )}
           </ListGroup>
         </Modal.Body>
         <Modal.Footer>
@@ -163,6 +176,7 @@ const GroupTab = () => {
 };
 
 export default GroupTab;
+
 // import React, { useEffect, useState } from "react";
 // import axios from "axios";
 // import { Form, Button, ListGroup } from "react-bootstrap";

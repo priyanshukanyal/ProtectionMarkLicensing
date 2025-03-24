@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthContext";
 
 const Signup = () => {
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,9 +14,10 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     try {
-      const response = await axios.post(
+      const { data } = await axios.post(
         "http://localhost:5000/api/users/register",
         {
           name,
@@ -23,13 +26,10 @@ const Signup = () => {
         }
       );
 
-      // Save token to localStorage
-      localStorage.setItem("token", response.data.token);
-
-      // Redirect to home page
+      login(data.token);
       navigate("/");
     } catch (error) {
-      setError("Error creating account. Please try again.");
+      setError(error.response?.data?.message || "Error creating account");
     }
   };
 
