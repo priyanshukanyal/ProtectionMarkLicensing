@@ -51,7 +51,15 @@ const Device = () => {
   const fetchGroups = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/groups");
-      setGroups(Array.isArray(res.data.data) ? res.data.data : []);
+      console.log("Groups API Response:", res.data); // Debugging
+
+      if (res.data && Array.isArray(res.data)) {
+        setGroups(res.data); // If API response is an array, use it directly
+      } else if (res.data && Array.isArray(res.data.data)) {
+        setGroups(res.data.data); // If the array is nested inside `data`
+      } else {
+        throw new Error("Invalid groups response");
+      }
     } catch (error) {
       setError("Failed to fetch groups.");
     }

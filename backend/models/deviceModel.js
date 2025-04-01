@@ -76,6 +76,19 @@ const deviceModel = {
       .input("DeviceID", sql.Int, deviceId)
       .query("DELETE FROM DeviceMaster WHERE DeviceID = @DeviceID");
   },
+
+  async getDevicesByAllocationStatus(isAllocated) {
+    const pool = await connectDB();
+    const result = await pool.request().input("Allocated", sql.Bit, isAllocated) // ✅ directly pass
+      .query(`
+      SELECT d.*, l.LicenseName 
+      FROM DeviceMaster d
+      LEFT JOIN LicenseMaster l ON d.LicenseID = l.LicenseID
+      WHERE d.Allocated = @Allocated
+    `);
+
+    return result.recordset;
+  },
 };
 
 export default deviceModel;

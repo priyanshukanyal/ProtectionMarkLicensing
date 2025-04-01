@@ -6,7 +6,7 @@ import HealthPage from "./Health/HealthPage.js";
 import LicenceReport from "./Licence/Licence.js";
 import Settings from "./Settings/Settings.js";
 import cyberSecurityImg from "../assets/cybersecurity.webp"; // Add a relevant image in assets
-
+import { Link } from "react-router-dom";
 const HomePage = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -79,9 +79,11 @@ const HomePage = () => {
               <p className="fs-5">
                 Your trusted solution for watermark security on devices.
               </p>
-              <Button variant="primary" size="lg" className="fw-bold shadow">
-                Learn More
-              </Button>
+              <Link to="/license-generator">
+                <Button variant="primary" size="lg" className="fw-bold shadow">
+                  Learn More
+                </Button>
+              </Link>
             </Card.ImgOverlay>
           </Card>
 

@@ -63,3 +63,29 @@ export const deleteDevice = async (req, res) => {
       .json({ success: false, message: "Error deleting device", error });
   }
 };
+
+export const getDevicesByAllocationStatus = async (req, res) => {
+  try {
+    const { allocated } = req.query;
+
+    // Ensure allocated is either "0" or "1"
+    if (allocated !== "0" && allocated !== "1") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid allocated value. Use 0 or 1.",
+      });
+    }
+
+    const allocationStatus = allocated === "1" ? 1 : 0; // Convert to integer
+
+    const devices = await deviceModel.getDevicesByAllocationStatus(
+      allocationStatus
+    );
+    res.status(200).json({ success: true, devices });
+  } catch (error) {
+    console.error("Error fetching devices by allocation status:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error fetching device", error });
+  }
+};

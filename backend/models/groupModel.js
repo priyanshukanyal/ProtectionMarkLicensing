@@ -41,10 +41,31 @@ const groupModel = {
 
   async deleteGroup(groupId) {
     const pool = await connectDB();
-    await pool
-      .request()
-      .input("GroupID", sql.Int, groupId)
-      .query("DELETE FROM GroupMaster WHERE GroupID = @GroupID");
+
+    try {
+      // Step 1: Unassign devices from the group
+      await pool
+        .request()
+        .input("GroupID", sql.Int, groupId)
+        .query(
+          "UPDATE DeviceMaster SET GroupID = NULL WHERE GroupID = @GroupID"
+        );
+
+      // Step 2: Delete the group after all devices are unassigned
+      const result = await pool
+        .request()
+        .input("GroupID", sql.Int, groupId)
+        .query("DELETE FROM GroupMaster WHERE GroupID = @GroupID");
+
+      if (result.rowsAffected[0] === 0) {
+        throw new Error("Group not found or already deleted");
+      }
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      throw new Error(
+        "Error deleting group. Ensure no devices are assigned or try again later."
+      );
+    }
   },
 };
 
